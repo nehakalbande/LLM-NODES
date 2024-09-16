@@ -1,48 +1,64 @@
-import { Button, Box } from '@mui/material';
+import { Button } from '@mui/material';
 import { useStore } from './store';
+import { shallow } from 'zustand/shallow';
+import axios from 'axios';
+import { useReactFlow } from 'reactflow';
+
+
+const selector = (state) => ({
+  nodes: state.nodes,
+  edges: state.edges,
+  updateNodeField: state.updateNodeField,
+});
 
 export const SubmitButton = () => {
-    const { nodes, edges } = useStore((state) => ({
-        nodes: state.nodes,
-        edges: state.edges,
-    }));
+  const { nodes, edges,updateNodeField } = useStore(selector, shallow);
+  const { setNodes } = useReactFlow();
 
-    const handleSubmit = async () => {
-        const pipelineData = {
-            nodes: nodes.map(node => ({
-                id: node.id,
-                type: node.type,
-                position: node.position,
-                data: node.data
-            })),
-            edges: edges.map(edge => ({
-                source: edge.source,
-                target: edge.target,
-                id: edge.id
-            }))
-        };
+  const handleSubmit = async () => {
+    try {
 
-        try {
-            const response = await fetch('http://127.0.0.1:8000/pipelines/parse', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(pipelineData)
-            });
-            
-            const result = await response.json();
-            alert(`Number of Nodes: ${result.num_nodes}\nNumber of Edges: ${result.num_edges}\nIs DAG: ${result.is_dag ? 'Yes' : 'No'}`);
-        } catch (error) {
-            console.error('Error submitting the pipeline:', error);
-        }
-    };
+      console.log('Nodes before submitting:', nodes);
 
-    return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <Button variant="contained" color="primary" onClick={handleSubmit}>
-                Submit
-            </Button>
-        </Box>
-    );
+      const response = await axios.post('http://localhost:8000/pipelines/parse', {
+        nodes,
+        edges
+      });
+
+      const { num_nodes, num_edges, is_dag, llm_result } = response.data;
+
+      console.log('LLM Result:', llm_result);
+      const outputNode = nodes.find(node => node.type === 'customOutput');
+
+      if (outputNode) {
+
+        updateNodeField(outputNode.id, 'outputName', llm_result);
+        console.log(`Updating OutputNode (ID: ${outputNode.id}) with LLM result: ${llm_result}`);
+        setNodes((currentNodes) =>
+          currentNodes.map((node) =>
+            node.id === outputNode.id
+              ? {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    outputName: llm_result, 
+                  },
+                }
+              : node
+          )
+        );
+      }
+
+      alert(`Nodes: ${num_nodes}\nEdges: ${num_edges}\nIs DAG: ${is_dag ? 'Yes' : 'No'}\nLLM Result: ${llm_result}`);
+    } catch (error) {
+      console.error('Error submitting pipeline:', error);
+      alert('Failed to submit pipeline.');
+    }
+  };
+
+  return (
+    <Button variant="contained" color="secondary" onClick={handleSubmit} sx={{ display: 'block', margin: '0 auto', mt: 2 }}>
+      Submit
+    </Button>
+  );
 };

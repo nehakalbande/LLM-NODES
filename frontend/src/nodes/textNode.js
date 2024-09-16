@@ -1,72 +1,69 @@
-import { useState, useEffect } from 'react';
-import { BaseNode } from './BaseNode';
-import { TextField } from '@mui/material';
+import { useState } from 'react';
 import { Handle, Position } from 'reactflow';
+import { Box, TextField } from '@mui/material';
 
-const isValidVariableName = (name) => {
-  // Basic check for a valid JavaScript variable name
-  return /^[a-zA-Z_$][0-9a-zA-Z_$]*$/.test(name.trim());
+const extractVariables = (text) => {
+  const regex = /\{\{\s*([a-zA-Z_$][a-zA-Z_$0-9]*)\s*\}\}/g;
+  let match;
+  const variables = [];
+  
+  while ((match = regex.exec(text)) !== null) {
+    variables.push(match[1]); 
+  }
+  
+  return variables;
 };
 
 export const TextNode = ({ id, data }) => {
-  const [currText, setCurrText] = useState(data?.text || '{{input}}');
-  const [handles, setHandles] = useState([]);
-  const [dimensions, setDimensions] = useState({ width: 200, height: 80 });
-
-  useEffect(() => {
-    // Adjust width and height based on text length
-    const newWidth = Math.max(200, currText.length * 10); // Calculate width dynamically
-    const newHeight = Math.max(80, currText.split('\n').length * 20); // Adjust height based on line count
-    setDimensions({ width: newWidth, height: newHeight });
-
-    // Detect variables in the text input
-    const variableMatches = [...currText.matchAll(/\{\{\s*(\w+)\s*\}\}/g)];
-    const newHandles = variableMatches
-      .map((match) => match[1])
-      .filter(isValidVariableName)
-      .map((variable, index) => ({
-        id: variable,
-        type: 'target',
-        position: Position.Left,
-        style: { top: `${(index + 1) * 20}px` },
-      }));
-
-    setHandles(newHandles);
-  }, [currText]);
+  const [currText, setCurrText] = useState(data?.text || '');
+  const [variables, setVariables] = useState([]);
+  const [nodeSize, setNodeSize] = useState({ width: 200, height: 80 }); 
 
   const handleTextChange = (e) => {
-    setCurrText(e.target.value);
+    const newText = e.target.value;
+    setCurrText(newText);
+    
+    const extractedVariables = extractVariables(newText);
+    setVariables(extractedVariables);
+    
+    const newWidth = Math.max(200, newText.length * 8); 
+    const newHeight = Math.max(80, newText.split('\n').length * 25); 
+    setNodeSize({ width: newWidth, height: newHeight });
   };
 
   return (
-    <BaseNode
-      id={id}
-      label="Text"
-      data={{
-        content: (
-          <TextField
-            label="Text"
-            variant="outlined"
-            multiline
-            fullWidth
-            value={currText}
-            onChange={handleTextChange}
-            sx={{
-              width: '100%',
-              height: '100%',
-              padding: '5px',
-            }}
-          />
-        ),
-      }}
-      handles={[
-        ...handles,
-        { id: 'output', type: 'source', position: Position.Right },
-      ]}
-      sx={{
-        width: `${dimensions.width}px`,
-        height: `${dimensions.height}px`,
-      }}
-    />
+    <Box sx={{ width: nodeSize.width, height: nodeSize.height, border: '1px solid black', padding: 1, borderRadius: 1 }}>
+      <div>
+        <span>Text Node</span>
+      </div>
+      <div>
+        <TextField
+          fullWidth
+          multiline
+          value={currText}
+          onChange={handleTextChange}
+          placeholder="Enter text with {{ variable }}"
+          variant="outlined"
+          size="small"
+          sx={{ width: '100%', height: '100%' }}
+        />
+      </div>
+
+      <Handle
+        type="source"
+        position={Position.Right}
+        id={`${id}-output`}
+      />
+
+      {variables.map((variable, index) => (
+        <Handle
+          key={`${id}-${variable}`}
+          type="target"
+          position={Position.Left}
+          id={`${id}-${variable}`}
+          style={{ top: `${(index + 1) * (100 / (variables.length + 1))}%` }} // evenly distribute the handles
+        />
+      ))}
+    </Box>
   );
 };

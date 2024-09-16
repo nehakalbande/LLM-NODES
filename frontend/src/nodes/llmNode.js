@@ -1,21 +1,14 @@
 import { BaseNode } from './BaseNode';
 import { Box, Typography } from '@mui/material';
 
-export const LLMNode = ({ id }) => {
-  return (
-    <BaseNode
-      id={id}
-      label="LLM"
-      data={{ content: (
-        <Box>
-          <Typography>This is an LLM.</Typography>
-        </Box>
-      )}}
-      handles={[
-        { id: 'system', type: 'target', position: 'Left', style: { top: '33%' } },
-        { id: 'prompt', type: 'target', position: 'Left', style: { top: '66%' } },
-        { id: 'response', type: 'source' }
-      ]}
-    />
+export const LLMNode = ({ id, data }) => {
+  const renderContent = () => (
+    <Box>
+      <Typography variant="body2" color="textSecondary">
+        This is an LLM node.
+      </Typography>
+    </Box>
   );
+
+  return <BaseNode id={id} data={data} type="LLM" inputs={['system', 'prompt']} outputs={['response']} renderContent={renderContent} />;
 };

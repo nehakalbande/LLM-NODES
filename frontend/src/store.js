@@ -26,29 +26,16 @@ export const useStore = create((set, get) => ({
         });
     },
     onNodesChange: (changes) => {
-      console.log('Node Changes:', changes);
-      console.log('Current Nodes:', get().nodes);
-    
       set({
         nodes: applyNodeChanges(changes, get().nodes),
       });
     },
     onEdgesChange: (changes) => {
-      console.log('Edge Changes:', changes);
-  console.log('Current Edges:', get().edges);
-
       set({
         edges: applyEdgeChanges(changes, get().edges),
       });
     },
     onConnect: (connection) => {
-      const sourceNode = get().nodes.find((node) => node.id === connection.source);
-  const targetNode = get().nodes.find((node) => node.id === connection.target);
-  if (!sourceNode || !targetNode || !sourceNode.position || !targetNode.position) {
-    console.warn('Invalid connection: source or target node is missing or has no valid position.');
-    return;
-  }
-
       set({
         edges: addEdge({...connection, type: 'smoothstep', animated: true, markerEnd: {type: MarkerType.Arrow, height: '20px', width: '20px'}}, get().edges),
       });
@@ -57,6 +44,7 @@ export const useStore = create((set, get) => ({
       set({
         nodes: get().nodes.map((node) => {
           if (node.id === nodeId) {
+            console.log(`Updating node ${nodeId}: setting ${fieldName} = ${fieldValue}`);
             node.data = { ...node.data, [fieldName]: fieldValue };
           }
   

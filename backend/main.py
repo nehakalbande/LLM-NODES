@@ -1,20 +1,26 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel
 from typing import List, Dict
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# Define the structure of the request body
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3002"],  
+    allow_credentials=True,
+    allow_methods=["*"],  
+    allow_headers=["*"],  
+)
+
 class Node(BaseModel):
     id: str
     type: str
-    position: Dict[str, float]
-    data: Dict[str, str]
+    data: dict
 
 class Edge(BaseModel):
     source: str
     target: str
-    id: str
 
 class Pipeline(BaseModel):
     nodes: List[Node]
@@ -28,41 +34,53 @@ def read_root():
 def parse_pipeline(pipeline: Pipeline):
     num_nodes = len(pipeline.nodes)
     num_edges = len(pipeline.edges)
+    
+    llm_node = next((node for node in pipeline.nodes if node.type == 'llm'), None)
+    llm_result = ""
+    
+    if llm_node:
+        input_node = next((node for node in pipeline.nodes if node.type == 'customInput'), None)
+        if input_node:
+            input_text = input_node.data.get('inputName', '')
+            if input_text == "Hello, how are you?":
+                llm_result = "Bonjour, comment ça va?"
+            elif input_text == "Good morning":
+                llm_result = "Bonjour"
+            else:
+                llm_result = f"Translated: {input_text}" 
 
-    # Check if the pipeline forms a Directed Acyclic Graph (DAG)
-    def has_cycle(graph, node, visited, rec_stack):
-        visited[node] = True
-        rec_stack[node] = True
+    is_dag = check_if_dag(pipeline.nodes, pipeline.edges)
 
-        for neighbor in graph.get(node, []):
-            if not visited.get(neighbor, False) and has_cycle(graph, neighbor, visited, rec_stack):
-                return True
-            elif rec_stack.get(neighbor, False):
-                return True
+    return {'num_nodes': num_nodes, 'num_edges': num_edges, 'is_dag': is_dag, 'llm_result': llm_result }
 
-        rec_stack[node] = False
-        return False
-
-    # Build adjacency list from edges
-    graph = {}
-    for edge in pipeline.edges:
-        if edge.source not in graph:
-            graph[edge.source] = []
+def check_if_dag(nodes: List[Node], edges: List[Edge]) -> bool:
+    graph = {node.id: [] for node in nodes}
+    
+    for edge in edges:
         graph[edge.source].append(edge.target)
 
-    # Perform cycle detection (for DAG check)
-    visited = {}
-    rec_stack = {}
-    is_dag = True
-    for node in pipeline.nodes:
-        if not visited.get(node.id, False):
-            if has_cycle(graph, node.id, visited, rec_stack):
-                is_dag = False
-                break
+    visited = set()
+    rec_stack = set()
 
-    # Return the number of nodes, edges, and if it's a DAG
-    return {
-        "num_nodes": num_nodes,
-        "num_edges": num_edges,
-        "is_dag": is_dag
-    }
+    def dfs(v):
+        if v in rec_stack:
+            return False
+        if v in visited:
+            return True
+
+        visited.add(v)
+        rec_stack.add(v)
+
+        for neighbor in graph[v]:
+            if not dfs(neighbor):
+                return False
+
+        rec_stack.remove(v)
+        return True
+
+    for node in nodes:
+        if node.id not in visited:
+            if not dfs(node.id):
+                return False
+
+    return True

@@ -1,26 +1,55 @@
-import { Handle, Position } from 'reactflow';
-import { Box, Paper, Typography } from '@mui/material';
+import { Handle, Position, useReactFlow } from 'reactflow';
+import { useState } from 'react';
 
-export const BaseNode = ({ id, data, label, handles }) => {
+export const BaseNode = ({ id, data, type, inputs = [], outputs = [], renderContent }) => {
+  const [nodeData, setNodeData] = useState(data || {});
+  const { setNodes } = useReactFlow();
+
+
+  const handleChange = (field, value) => {
+    const updatedData = { ...nodeData, [field]: value };
+    setNodeData(updatedData);
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === id
+          ? {
+              ...node,
+              data: updatedData,  
+            }
+          : node
+      )
+    );
+  };
+
   return (
-    <Paper elevation={3} sx={{ padding: 2, width: 200, height: 100, position: 'relative', borderRadius: 2 }}>
-      <Box sx={{ mb: 1 }}>
-        <Typography variant="h6" component="div">
-          {label}
-        </Typography>
-      </Box>
-      <Box>
-        {data.content || ''}
-      </Box>
-      {handles.map((handle) => (
+    <div style={{width: 200, height: 100, border: '1px solid black'}}>
+      <div>
+        <span>{type}</span>
+      </div>
+      
+      <div>
+        {renderContent(nodeData, handleChange)}
+      </div>
+
+      {inputs.map((input, idx) => (
         <Handle
-          key={handle.id}
-          type={handle.type}
-          position={handle.position || Position.Right}
-          id={`${id}-${handle.id}`}
-          style={handle.style}
+          key={`${id}-${input}`}
+          type="target"
+          position={Position.Left}
+          id={`${id}-${input}`}
+          style={{top: `${(idx + 1) * (100 / (inputs.length + 1))}%`}}
         />
       ))}
-    </Paper>
+
+      {outputs.map((output, idx) => (
+        <Handle
+          key={`${id}-${output}`}
+          type="source"
+          position={Position.Right}
+          id={`${id}-${output}`}
+          style={{top: `${(idx + 1) * (100 / (outputs.length + 1))}%`}}
+        />
+      ))}
+    </div>
   );
 };

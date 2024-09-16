@@ -1,49 +1,30 @@
-import { useState } from 'react';
 import { BaseNode } from './BaseNode';
 import { Box, TextField, MenuItem } from '@mui/material';
 
 export const InputNode = ({ id, data }) => {
-  const [currName, setCurrName] = useState(data?.inputName || id.replace('customInput-', 'input_'));
-  const [inputType, setInputType] = useState(data.inputType || 'Text');
-
-  const handleNameChange = (e) => {
-    setCurrName(e.target.value);
-  };
-
-  const handleTypeChange = (e) => {
-    setInputType(e.target.value);
-  };
-
-  return (
-    <BaseNode
-      id={id}
-      label="Input"
-      data={{ content: (
-        <Box>
-          <TextField
-            label="Name"
-            variant="outlined"
-            fullWidth
-            value={currName}
-            onChange={handleNameChange}
-            sx={{ mb: 1 }}
-          />
-          <TextField
-            select
-            label="Type"
-            variant="outlined"
-            fullWidth
-            value={inputType}
-            onChange={handleTypeChange}
-          >
-            <MenuItem value="Text">Text</MenuItem>
-            <MenuItem value="File">File</MenuItem>
-          </TextField>
-        </Box>
-      )}}
-      handles={[
-        { id: 'value', type: 'source' }
-      ]}
-    />
+  const renderContent = (nodeData, handleChange) => (
+    <Box>
+      <TextField 
+        label="Name"
+        value={nodeData.inputName || 'input'} 
+        onChange={(e) => handleChange('inputName', e.target.value)} 
+        fullWidth
+        size="small"
+        sx={{ mb: 1 }}
+      />
+      <TextField
+        label="Type"
+        select
+        value={nodeData.inputType || 'Text'} 
+        onChange={(e) => handleChange('inputType', e.target.value)} 
+        fullWidth
+        size="small"
+      >
+        <MenuItem value="Text">Text</MenuItem>
+        <MenuItem value="File">File</MenuItem>
+      </TextField>
+    </Box>
   );
+
+  return <BaseNode id={id} data={data} type="Input" inputs={[]} outputs={['value']} renderContent={renderContent} />;
 };
